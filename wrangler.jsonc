@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "turnip-and-tankard",
+  "compatibility_date": "2026-10-01",
+  // The game is single-player and saves in the browser, so there is no Worker script yet:
+  // Cloudflare serves the built client as static assets. Add "main" and
+  // "run_worker_first": ["/api/*"] (as in GeoTurnip) when online data is needed.
+  "assets": {
+    "directory": "./dist"
+  }
+}
