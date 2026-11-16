@@ -24,29 +24,11 @@ import {
   toggleMenu,
   type GameState,
 } from './game';
-import { addToPan, cook, matchRecipe, serve, startService, tick, type Service } from './service';
+import { playService } from './autoplay';
+import { addToPan, cook, matchRecipe, startService, tick } from './service';
 import { STORY_BEATS, STORY_SPEAKERS } from './story';
 
 const NO_TOTALS = { served: 0, lost: 0, food: 0, tips: 0, xp: 0, levelsGained: 0 };
-
-/** Plays one service the way a competent player would: cook whatever is ordered, serve it. */
-function playService(state: GameState): Service {
-  const service = startService(state);
-  for (let step = 0; step < 20000 && !service.done; step++) {
-    tick(state, service, 0.1);
-    if (service.plate) {
-      if (!serve(state, service)) service.plate = null;
-    } else if (!service.cooking) {
-      const waiting = service.seats.find((customer) => customer?.mood === 'waiting');
-      if (waiting?.order) {
-        const ok = RECIPES[waiting.order].ingredients.every((item) => addToPan(state, service, item));
-        if (ok) cook(state, service);
-        else while (service.pan.length) state.stock[service.pan.pop()!] += 1;
-      }
-    }
-  }
-  return service;
-}
 
 function playDay(state: GameState): void {
   // Restock the basics and take every offer we can afford.
