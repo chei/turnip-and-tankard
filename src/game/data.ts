@@ -247,7 +247,7 @@ export function gearPrice(id: GearId): number {
 
 /** XP needed to go from `level` to the next one. */
 export function xpForLevel(level: number): number {
-  return Math.round(16 * Math.pow(level, 1.45));
+  return Math.round(18 * Math.pow(level, 1.5));
 }
 
 export const MAX_LEVEL = 12;

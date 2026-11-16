@@ -60,7 +60,7 @@ export interface Service {
 
 export function startService(state: GameState): Service {
   const queue: CustomerSpec[] = [];
-  const villagers = Math.min(14, 4 + state.level);
+  const villagers = Math.min(20, 4 + Math.floor(state.level * 1.5));
   for (let i = 0; i < villagers; i++) queue.push({ kind: 'villager', seed: Math.floor(random(state) * 0x7fffffff) });
   for (const adv of guests(state)) {
     queue.push({ kind: 'adventurer', advId: adv.id, seed: adv.seed });
@@ -140,7 +140,7 @@ export function serve(state: GameState, service: Service, seat = seatWanting(ser
   if (!customer || !dish || dish === 'slop' || customer.mood !== 'waiting' || customer.order !== dish) return false;
   const price = recipePrice(dish);
   const mood = customer.patience / customer.maxPatience;
-  const tip = Math.round(price * 0.3 * mood) + (mood > 0.5 ? state.decor : 0);
+  const tip = Math.round(price * 0.3 * mood * (1 + 0.2 * state.decor));
   const xp = recipeXp(dish);
   state.gold += price + tip;
   state.stats.served += 1;
@@ -189,7 +189,7 @@ function chooseOrder(state: GameState, service: Service, spec: CustomerSpec): Re
 function seatNext(state: GameState, service: Service, seat: number): void {
   const spec = service.queue.shift()!;
   const order = chooseOrder(state, service, spec);
-  const patience = (spec.kind === 'adventurer' ? 26 : 22) + state.decor * 3 + (state.day === 1 ? 10 : 0);
+  const patience = (spec.kind === 'adventurer' ? 24 : 20) + state.decor * 3 + (state.day === 1 ? 10 : 0);
   const customer: Customer = {
     uid: service.nextUid++,
     spec,
@@ -250,7 +250,7 @@ export function tick(state: GameState, service: Service, dt: number): void {
     service.spawnIn -= dt;
     if (service.spawnIn <= 0) {
       seatNext(state, service, free);
-      service.spawnIn = 1.2 + random(state) * 2.2;
+      service.spawnIn = 0.9 + random(state) * 2;
     }
   }
 

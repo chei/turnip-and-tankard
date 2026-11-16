@@ -361,11 +361,30 @@ export class App {
 
   // ---------------------------------------------------------------- input
 
+  /** Keyboard play: Enter/Space for the main button, digits for the larder, Backspace to take back. */
   private onKey(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    const main = event.key === 'Enter' || event.key === ' ';
     if (this.story) {
+      if (main) {
+        event.preventDefault();
+        this.advanceStory();
+      }
+      return;
+    }
+    if (this.settingsOpen || this.screen === 'title') return;
+    let target: HTMLElement | null = null;
+    if (main) {
+      target = this.panel.querySelector<HTMLElement>('[data-act=serve], [data-act=cook], [data-act=open], [data-act=next-day]');
+    } else if (this.screen === 'service' && /^[0-9]$/.test(event.key)) {
+      const index = event.key === '0' ? 9 : Number(event.key) - 1;
+      target = this.panel.querySelectorAll<HTMLElement>('[data-act=add]')[index] ?? null;
+    } else if (this.screen === 'service' && (event.key === 'Backspace' || event.key === 'Delete')) {
+      target = this.panel.querySelector<HTMLElement>('[data-act=discard]') ?? [...this.panel.querySelectorAll<HTMLElement>('[data-act=unpan]')].pop() ?? null;
+    }
+    if (target) {
       event.preventDefault();
-      this.advanceStory();
+      target.click();
     }
   }
 
@@ -436,7 +455,7 @@ export class App {
       case 'tab':
         this.tab = arg as Tab;
         play('tap');
-        this.panel.scrollTop = 0;
+        this.tabScroll = 0;
         break;
       case 'offer':
         ok = acceptOffer(state, Number(arg));
@@ -614,7 +633,7 @@ export class App {
         <div class="bar"><i style="width:${percent}%"></i></div>
       </div>
       <div class="hud-gold">${icon('coin')}<b>${state.gold}</b></div>
-      <button class="icon-btn" data-act="settings" aria-label="${t.settings}">${icon('hammer')}</button>
+      <button class="icon-btn" data-act="settings" aria-label="${t.settings}">${icon('cog')}</button>
     `;
   }
 
@@ -625,11 +644,14 @@ export class App {
       return;
     }
     const count = this.service.seats.length;
+    const state = this.state;
     this.hits.innerHTML = this.service.seats
-      .map(
-        (_, index) =>
-          `<button class="hit" data-act="seat" data-arg="${index}" style="left:${(index / count) * 100}%;width:${100 / count}%" tabindex="-1"></button>`,
-      )
+      .map((customer, index) => {
+        // Lodging adventurers are regulars: they get a name tag on the counter.
+        const adv = customer?.spec.advId !== undefined && state ? adventurer(state, customer.spec.advId) : undefined;
+        const tag = adv && customer?.mood === 'waiting' ? `<span class="name-tag">${adv.name}</span>` : '';
+        return `<button class="hit" data-act="seat" data-arg="${index}" style="left:${(index / count) * 100}%;width:${100 / count}%" tabindex="-1">${tag}</button>`;
+      })
       .join('');
   }
 
@@ -988,8 +1010,8 @@ export class App {
     const lockPantry = busy || service.plate !== null || service.pan.length >= PAN_SIZE;
     const pantry = this.pantry(state)
       .map(
-        (item) =>
-          `<button class="ingredient" data-act="add" data-arg="${item}" ${lockPantry || state.stock[item] <= 0 ? 'disabled' : ''} title="${t.items[item]}">${icon(item)}<b>${state.stock[item]}</b><small>${t.items[item]}</small></button>`,
+        (item, index) =>
+          `<button class="ingredient" data-act="add" data-arg="${item}" ${lockPantry || state.stock[item] <= 0 ? 'disabled' : ''} title="${t.items[item]}">${icon(item)}<b>${state.stock[item]}</b>${index < 10 ? `<kbd>${(index + 1) % 10}</kbd>` : ''}<small>${t.items[item]}</small></button>`,
       )
       .join('');
 
@@ -1019,6 +1041,7 @@ export class App {
       this.kitchenKey = key;
       this.panel.innerHTML = this.kitchenHtml(state);
       this.renderHud();
+      this.renderHits();
       if (this.menuCard.childElementCount !== 0 && state.menu.length !== this.menuCard.querySelectorAll('.menu-line').length) {
         this.renderMenuCard();
       }
